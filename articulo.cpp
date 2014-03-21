@@ -51,6 +51,10 @@ int prisImage::extractNextImage(){
 		isMask: true defines if it uses the mask loaded to mask previously. 
 	RGB:
 		hist would contain the histogram for each channel (R,G,B) in that order.
+
+	The number of bins is differnt for each ColorSystem
+	In RGB is called histSize
+	In HSV is called hbins and sbins
 */
 int prisImage::histogram(const string colorSystem, bool useMask){
 	///RGB Histogram
@@ -149,4 +153,91 @@ Mat prisImage::contoursToMask(vector<Point> contour, int type = CV_8UC1){
 
     // At this point, mask has value of 255 for pixels within the contour and value of 0 for those not in contour.
  	return  mask; 
+}
+
+/*
+	Constructor of the blopList
+*/
+blopList::blopList(vector<blop> list, int k, int dimensions){
+	this->list = list;
+	this->k = k;
+	this->dimensions = dimensions;
+	closesCentroidIndex.
+}
+
+/*
+	Get the closes centroid to the blop at blopIndex
+*/
+int getClosestCentroid(int blopIndex){
+	/*
+		minValue: result of the current minimum distance calculation
+		tempMin: result of the current distance calculation
+		result: index of the current minimum distance centroid
+	*/
+	double minValue, tempMin;
+	int result;
+	///Initialize with the max double value
+	minValue = numeric_limits<int>::max();
+	///Iterates over all the centroids
+	for(int i=0;i<k;++i){
+		///Calculate distance
+		tempMin = list[blopIndex].distance(centroids[i]);
+		if(tempMin < minValue){/// Update if smaller
+			result = i;
+			minValue = tempMin;
+		}
+	}
+	return result;
+}
+
+/*
+	K-means clustering function
+	Parameters
+	*Condition: is one of the values of the enum TERMINATION_T {NUM_ITERATIONS, DISTANCE}, which defines the type of finish conditions used in the algorithm
+	*LimitCondtion: depending on the value selected in the first parameter it can mean the number of iterations, of the minimum distance that the centroids have to move before the algorithm finishes.
+ 
+*/
+int blopList::kmeans(TERMINATION_T condition, int limitCondition){
+
+}
+/*
+	Initialize each centroid with a random value from the actual blop list.
+*/
+int blopList::randomInitializeCentroids(){
+	centroids.clear();
+	int size = list.size();
+	int randomNumber;
+	/* initialize random seed: */
+  	srand(time(NULL));
+
+  	for(int i=0; i < k; ++i){
+		/* generate secret number between 0 and size: */
+  		randomNumber = rand() % size;
+  		centroids.push_back(list[randomNumber]);
+	}
+}
+/*
+	Add the blop newBlop to the vector list.
+*/
+int blopList::addBlop(blop newBlop){
+	list.push_back(newBlop);
+}
+
+/*
+	Returns the blop at position i.
+*/
+blop blopList::getBlop(index i){
+	return list[i];
+}
+
+/*
+	This function returns the centroids calculated before of the k - clusters
+*/
+vector<blop> blopList::getCentroids(){
+	return centroids;
+}
+
+int blopList::setK(int newK){
+	this->k = newK;
+	return 0;
 }
