@@ -1,4 +1,4 @@
-/*
++ /*
 	Functions that are being used from the openCV library:
 	void calcHist(const Mat* images, int nimages, const int* channels, 					  InputArray mask, SparseMat& hist, int dims, const 				  int* histSize, const float** ranges, bool 				  uniform=true, bool accumulate=false )
 	Definitions of the parameters can be found: 
