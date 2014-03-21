@@ -40,7 +40,7 @@ private:
     double (*distanceFunc)(Mat&, Mat& *) ///Pointer to a function, the actual distance function.
 public:
     blop(Mat histo,double (*distanceFunc)(Mat&, Mat& *)){///Constructor
-        this->histo = histo;    
+        normalize(histo,this->histo);    
         this->distanceFunc = distanceFunc;
     }
     int setIndex(int index){///Set the value of index
@@ -74,10 +74,10 @@ private:
     int k;/// Number of clusters to calculate
     int dimensions;
     int getClosestCentroid(int blopIndex);//Private function to determine the closest centroid index
+    int randomInitializeCentroids();///Initialize centroids with random value.
 public:
     blopList(vector<blop> list, int k,int dimensions);///Constructor
     int kmeans(TERMINATION_T condition ,int limitCondition);///K-means function
-    int randomInitializeCentroids();///Initialize centroids with random value.
     int addBlop(blop newBlop);///Add a new blop to the list.
     int setK(int newK);///Change the number of clusters
     blop getBlop(index i);///get blop on index i.

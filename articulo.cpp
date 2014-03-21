@@ -162,13 +162,13 @@ blopList::blopList(vector<blop> list, int k, int dimensions){
 	this->list = list;
 	this->k = k;
 	this->dimensions = dimensions;
-	closesCentroidIndex.
+	closestCentroidIndex.reserve(list.size());
 }
 
 /*
 	Get the closes centroid to the blop at blopIndex
 */
-int getClosestCentroid(int blopIndex){
+int blopList::getClosestCentroid(int blopIndex){
 	/*
 		minValue: result of the current minimum distance calculation
 		tempMin: result of the current distance calculation
@@ -177,7 +177,7 @@ int getClosestCentroid(int blopIndex){
 	double minValue, tempMin;
 	int result;
 	///Initialize with the max double value
-	minValue = numeric_limits<int>::max();
+	minValue = numeric_limits<double>::max();
 	///Iterates over all the centroids
 	for(int i=0;i<k;++i){
 		///Calculate distance
@@ -189,7 +189,34 @@ int getClosestCentroid(int blopIndex){
 	}
 	return result;
 }
+/*
+	This function calculate the new value for the centroids
+*/
+int blopList::getNewCentroids(){
+  vector<double> totalBlops;
+  int position;
+  double scale;
+  totalBlops.reserve(k);
+  centroids.clear();
+  centroids.reserve(k);
+  Mat firstBlopHisto = list[0].getHisto();
+  ///Initialize each centroid with zeros.
+  for(int i=0; i < k; ++i){
+  	centroids.push_back(Mat::zeros(firstBlopHisto.size(),firstBlopHisto.type()));
+  }
+  ///Add each correspondant blop to the centroid
+  for (int i = 0 ; i < list.size(); ++i){
+  	position = closestCentroidIndex[i]
+  	totalBlops[position]+=1;
+  	centroids[position]+=lists[i];
+  }
+  ///Divide by N
+  for(int i=0; i< k; ++i){
+  	scale= 1/totalBlops[k];
+  	add(centroids[i],scale,Mat(),0,0,centroids[i]);
 
+  }
+}
 /*
 	K-means clustering function
 	Parameters
@@ -197,8 +224,28 @@ int getClosestCentroid(int blopIndex){
 	*LimitCondtion: depending on the value selected in the first parameter it can mean the number of iterations, of the minimum distance that the centroids have to move before the algorithm finishes.
  
 */
-int blopList::kmeans(TERMINATION_T condition, int limitCondition){
+int blopList::kmeans(TERMINATION_T condition, double limitCondition){
+	this->randomInitializeCentroids();
+	if(limitCondition == NUM_ITERATIONS){
+		double numIterations = 0;
+		int closest;
+		while(numIterations < limitCondition){
+			for (int i=0 ; i < list.size(); ++i){
+				closestCentroidIndex[i] = getClosestCentroid(i);
+			}
+			getNewCentroids();
+			++numIterations;
+		}
+	}
+	else if(limitCondition = DISTANCE){
+		double tempDistance = numeric_limits<int>::max(); 
+		while(tempDistance > limitCondition){
 
+		}
+	}
+	else{
+		cout<<"Wrong condition identifier"<<endl;
+	}
 }
 /*
 	Initialize each centroid with a random value from the actual blop list.
