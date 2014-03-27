@@ -4,14 +4,39 @@
     *Histogram
     *K-means
     *Bhattacharyya distance.
+    It is based on openCV 2.4.5, base version on ubuntu 13.10
 */
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>       /* time */
 #include <limits>       // std::numeric_limits
+#include "opencv2/core/core_c.h"
+#include "opencv2/core/core.hpp"
+#include "opencv2/flann/miniflann.hpp"
+#include "opencv2/imgproc/imgproc_c.h"
+#include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/video/video.hpp"
+#include "opencv2/features2d/features2d.hpp"
+#include "opencv2/objdetect/objdetect.hpp"
+#include "opencv2/calib3d/calib3d.hpp"
+#include "opencv2/ml/ml.hpp"
+#include "opencv2/highgui/highgui_c.h"
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/contrib/contrib.hpp"
+#include "rapidxml-1.13/rapidxml.hpp"
+#include "rapidxml-1.13/rapidxml_print.hpp"
+#include "rapidxml-1.13/rapidxml_utils.hpp"
+
+using namespace rapidxml;
 
 using namespace std;
+
+using namespace cv;
+
+#ifndef __ARTICULO_H_INCLUDED__   // if x.h hasn't been included yet...
+#define __ARTICULO_H_INCLUDED__   //   #define this so the compiler knows it has been included
+
 
 class prisImage{
 private:
@@ -26,6 +51,7 @@ public:
     int histogram(const string colorSystem, bool useMask);///Get histogram. Review .cpp for more information.
     int setMask(const string file);///NOT YET IMPLEMENTED
     Mat contoursToMask(vector<Point> contour, int type);///Transform contours into binary matrixes (masks)
+    vector<Mat> getHist();///Returns the internal variable hist
     
 };
 
@@ -36,10 +62,11 @@ double bhattacharyyaDistance(Mat& H1,Mat& H2){////Actual function distance
 class blop{
 private:
     Mat histo;///Histogram of the blop
-    int index;///index of the blop. Could be useful later to identify blops
-    double (*distanceFunc)(Mat&, Mat& *) ///Pointer to a function, the actual distance function.
+    int layer;///index of the blop. Could be useful later to identify blops
+    double (*distanceFunc)(Mat&, Mat& ); ///Pointer to a function, the actual distance function.
+    int frame;///Frame in which the blop is present
 public:
-    blop(Mat histo,double (*distanceFunc)(Mat&, Mat& *)){///Constructor
+    blop(Mat histo,double (*distanceFunc)(Mat&, Mat&)){///Constructor
         normalize(histo,this->histo);    
         this->distanceFunc = distanceFunc;
     }
@@ -55,9 +82,18 @@ public:
     }
     int setHisto(Mat newHisto){///Assign a different histogram
         this->histo = newHisto;
+        return 0;
     }
-    double distance(blop &other){///Calculta the distance from another blop histogram
+    double distance(blop &other){///Calculate the distance from another blop histogram
         return (*distanceFunc)(this->histo,other.getHisto());
+    }
+    int addBlops(Mat &otherHisto){
+        (this->histo)+= otherHisto;
+        return 0;
+    }
+    int multiplyScalar(double Scalar){///Multiply by a scalar
+        scaleAdd(this->histo,Scalar,Mat(),this->histo);
+        return 0;
     }
 };
 
@@ -77,10 +113,28 @@ private:
     int randomInitializeCentroids();///Initialize centroids with random value.
 public:
     blopList(vector<blop> list, int k,int dimensions);///Constructor
-    int kmeans(TERMINATION_T condition ,int limitCondition);///K-means function
+    int kmeans(TERMINATION_T condition ,double limitCondition);///K-means function
     int addBlop(blop newBlop);///Add a new blop to the list.
     int setK(int newK);///Change the number of clusters
-    blop getBlop(index i);///get blop on index i.
+    blop getBlop(int i);///get blop on index i.
     vector<blop> getCentroids();///return the centroids stored.
+    int getNewCentroids();
 };
 
+class XMLVideo{
+private:
+    int imageWidth;
+    int imageHeight;
+    int imageLength;
+    string xmlFilename;    
+    map<int,string> layersNames;
+    multimap<int,vector<Point> > contours;//This multimap contain each array of points for each contour, it is indexed by the frame number
+    blopList blops;
+public:
+    XMLVideo(string xmlFilename);
+    int kmeans(int k,TERMINATION_T condition ,double limitCondition);
+    int printXML();
+    blopList getBlops();
+};
+#include "articulo.cpp"
+#endif 

@@ -1,4 +1,4 @@
-+ /*
+/*
 	Functions that are being used from the openCV library:
 	void calcHist(const Mat* images, int nimages, const int* channels, 					  InputArray mask, SparseMat& hist, int dims, const 				  int* histSize, const float** ranges, bool 				  uniform=true, bool accumulate=false )
 	Definitions of the parameters can be found: 
@@ -127,10 +127,11 @@ int prisImage::histogram(const string colorSystem, bool useMask){
 	else{
 		cout<<"Color Representation is not yet Implemented"<<endl;
 	}	
+	return 0;
 }
 
 int prisImage::setMask(const string file){
-
+	return 0;
 }
 
 /*
@@ -145,7 +146,7 @@ Mat prisImage::contoursToMask(vector<Point> contour, int type = CV_8UC1){
 	vector< vector<Point> > contours;
 	contours.push_back(contour);
     // Get bounding box for contour
-    Rect roi = boundingRect(contour); // This is a OpenCV function
+    //Rect roi = boundingRect(contour); // This is a OpenCV function
 
     // Create a mask for each contour to mask out that region from image.
     mask = Mat::zeros(image.size(), type);
@@ -155,6 +156,9 @@ Mat prisImage::contoursToMask(vector<Point> contour, int type = CV_8UC1){
  	return  mask; 
 }
 
+vector<Mat> prisImage::getHist(){
+	return hist;
+}
 /*
 	Constructor of the blopList
 */
@@ -202,20 +206,20 @@ int blopList::getNewCentroids(){
   Mat firstBlopHisto = list[0].getHisto();
   ///Initialize each centroid with zeros.
   for(int i=0; i < k; ++i){
-  	centroids.push_back(Mat::zeros(firstBlopHisto.size(),firstBlopHisto.type()));
+  	centroids.push_back(blop(Mat::zeros(firstBlopHisto.size(),firstBlopHisto.type()),&bhattacharyyaDistance));
   }
   ///Add each correspondant blop to the centroid
-  for (int i = 0 ; i < list.size(); ++i){
-  	position = closestCentroidIndex[i]
+  for (int i = 0 ; i < (signed int) list.size(); ++i){
+  	position = closestCentroidIndex[i];
   	totalBlops[position]+=1;
-  	centroids[position]+=lists[i];
+ 	centroids[position].addBlops(list[i].getHisto());
   }
   ///Divide by N
   for(int i=0; i< k; ++i){
   	scale= 1/totalBlops[k];
-  	add(centroids[i],scale,Mat(),0,0,centroids[i]);
-
+  	centroids[i].multiplyScalar(scale);
   }
+  return 0;
 }
 /*
 	K-means clustering function
@@ -228,24 +232,24 @@ int blopList::kmeans(TERMINATION_T condition, double limitCondition){
 	this->randomInitializeCentroids();
 	if(limitCondition == NUM_ITERATIONS){
 		double numIterations = 0;
-		int closest;
 		while(numIterations < limitCondition){
-			for (int i=0 ; i < list.size(); ++i){
+			for (int i=0 ; i < (signed int) list.size(); ++i){
 				closestCentroidIndex[i] = getClosestCentroid(i);
 			}
 			getNewCentroids();
 			++numIterations;
 		}
 	}
-	else if(limitCondition = DISTANCE){
+	else if(limitCondition == DISTANCE){
 		double tempDistance = numeric_limits<int>::max(); 
 		while(tempDistance > limitCondition){
-
+			cout<<"Not yet implemented: Correction is needed :D"<<endl;
 		}
 	}
 	else{
 		cout<<"Wrong condition identifier"<<endl;
 	}
+	return 0;
 }
 /*
 	Initialize each centroid with a random value from the actual blop list.
@@ -262,18 +266,20 @@ int blopList::randomInitializeCentroids(){
   		randomNumber = rand() % size;
   		centroids.push_back(list[randomNumber]);
 	}
+	return 0;
 }
 /*
 	Add the blop newBlop to the vector list.
 */
 int blopList::addBlop(blop newBlop){
 	list.push_back(newBlop);
+	return 0;
 }
 
 /*
 	Returns the blop at position i.
 */
-blop blopList::getBlop(index i){
+blop blopList::getBlop(int i){
 	return list[i];
 }
 
@@ -287,4 +293,50 @@ vector<blop> blopList::getCentroids(){
 int blopList::setK(int newK){
 	this->k = newK;
 	return 0;
+}
+
+XMLVideo::XMLVideo(string xmlFilename){
+	file<> xmlFile(xmlFilename);
+	xml_document<> doc;
+	doc.parse<0>(xmlFile.data());	
+	///Parse root node
+	xml_node<> *pRoot = doc.first_node(); ///In this case is scene
+	///Root children video
+	xml_node<> *pNode=pRoot->first_node("video");///First children of video;
+	///Childrens of video
+	xml_node<> *widthNode = pNode->first_node("width");
+	xml_node<> *heightNode = pNode->first_node("height");
+	xml_node<> *lengthNode = pNode->first_node("length");
+	this->imageWidth = atoi(widthNode->value());
+	this->imageHeight = atoi(heightNode->value());
+	this->imageLength = atoi(lengthNode->value());
+	///Root children layers
+	xml_node<> *pLayers=pRoot->first_node("layers");///First children of video;	
+	///Iterate over layers childresns
+	for(xml_node<> * layer_node=pLayers->first_node("layer"); layer_node; layer_node=layer_node->next_sibling()){
+		///Get the attribute
+		///Inside this node we only need to use the first_node, there is no multiple siblings, we can check the values of depth, name, description, url, color_green,color_red, color_blue
+		xml_node<> *numberNode = layer_node->first_node("number");
+		std::string strValue = numberNode->value();
+		cout<< strValue <<endl;
+	}
+	///The same process is applied for the masks
+	xml_node<> *masksNode=pRoot->first_node("masks");///There is only one child of this type
+	///Iterate over masks childrens, called mask
+	for(xml_node<> * mask_node=masksNode->first_node("mask");mask_node;mask_node=mask_node->next_sibling()){
+		///Here we can get the values of the layer, frame, vertex count and polygon points. The last object has the atribute points
+		xml_node<> *pointsNode = mask_node->first_node("polygon");
+		string value = pointsNode->first_attribute("points")->value();
+		cout<<value<<"HOLA"<<endl;
+	}
+}
+int XMLVideo::kmeans(int k,TERMINATION_T condition ,double limitCondition){
+	return 0;
+}
+int XMLVideo::printXML(){
+	return 0;
+}
+
+blopList XMLVideo::getBlopList(){
+	return blops;	
 }
