@@ -307,9 +307,9 @@ XMLVideo::XMLVideo(string xmlFilename){
 	xml_node<> *widthNode = pNode->first_node("width");
 	xml_node<> *heightNode = pNode->first_node("height");
 	xml_node<> *lengthNode = pNode->first_node("length");
-	this->imageWidth = atoi(widthNode->value());
-	this->imageHeight = atoi(heightNode->value());
-	this->imageLength = atoi(lengthNode->value());
+	this->imageWidth = atoi((widthNode->value()).c_str());
+	this->imageHeight = atoi((heightNode->value()).c_str());
+	this->imageLength = atoi((lengthNode->value()).c_str());
 	///Root children layers
 	xml_node<> *pLayers=pRoot->first_node("layers");///First children of video;	
 	///Iterate over layers childresns
@@ -317,23 +317,44 @@ XMLVideo::XMLVideo(string xmlFilename){
 		///Get the attribute
 		///Inside this node we only need to use the first_node, there is no multiple siblings, we can check the values of depth, name, description, url, color_green,color_red, color_blue
 		xml_node<> *numberNode = layer_node->first_node("number");
+		xml_node<> *nameNode = layer_node->first_node("name");
 		std::string strValue = numberNode->value();
-		cout<< strValue <<endl;
+		int numberValue = atoi(strValue.c_str());
+		std::string name = numberNode->value();
+		layersNames[numberValue] = name;
+				
 	}
 	///The same process is applied for the masks
 	xml_node<> *masksNode=pRoot->first_node("masks");///There is only one child of this type
 	///Iterate over masks childrens, called mask
 	for(xml_node<> * mask_node=masksNode->first_node("mask");mask_node;mask_node=mask_node->next_sibling()){
 		///Here we can get the values of the layer, frame, vertex count and polygon points. The last object has the atribute points
+		vector<Point> tempPoints;
 		xml_node<> *pointsNode = mask_node->first_node("polygon");
-		string value = pointsNode->first_attribute("points")->value();
-		cout<<value<<"HOLA"<<endl;
+		string maskPoints = pointsNode->first_attribute("points")->value();
+		xml_node<> *layerNode = mask_node->first_attribute("layer");
+		int layerNumber = ((layerNode->value()).c_str());
+		std::istringstream ss(maskPoints);
+		std::string token;
+		std::string token2;
+		while(std::getline(ss, token, ' ')) {///Each pair is separated by a whitespace
+    		Point temp;
+    		int counter = 0;
+    		while(std::getline(token,token2, ',')){
+    			if(counter = 0)
+    				temp.x=atoi(token2.c_str());
+    			else
+    				temp.y=atoi(token2.c_str());
+    			++counter;
+    		}
+    		counter = 0;
+    		tempPoints.push_back(temp);
+		}
+		contours.insert(std::pair<int,vector<Point> >(layerNumber,tempPoints));
 	}
+	blops()
 }
 int XMLVideo::kmeans(int k,TERMINATION_T condition ,double limitCondition){
-	return 0;
-}
-int XMLVideo::printXML(){
 	return 0;
 }
 
