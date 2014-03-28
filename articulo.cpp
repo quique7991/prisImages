@@ -11,6 +11,16 @@
 	Input parameters:
 		filename: name of the file that contains the video being analized.
 */
+///DUMB CONSTRUCTOR
+prisImage::prisImage(){
+
+}
+
+/*
+	Constructor
+	Input parameters:
+		filename: name of the file that contains the video being analized.
+*/
 prisImage::prisImage(const string filename){
 	if(file.open(filename)){
 		cout<<"File opened succesfuly"<<endl;	
@@ -29,6 +39,19 @@ prisImage::~prisImage(){
 		file.release();
 		cout<<"File released"<<endl;
 	}
+}
+/*
+	Function to open a video
+	input: filename
+*/
+int prisImage::loadVideo(string filename){
+	if(file.open(filename)){
+		cout<<"File opened succesfuly"<<endl;	
+	}
+	else{
+		cout<<"Error opening the file"<<endl;
+	}	
+	return 0;
 }
 /*
 	Loads a new frame to the internal value image.
@@ -60,43 +83,33 @@ int prisImage::histogram(const string colorSystem, bool useMask){
 	///RGB Histogram
 	if(colorSystem.compare("RGB")==0){
 		/// Separate the image in 3 places ( B, G and R )
-		vector<Mat> bgr_planes;
-		split( image, bgr_planes );
 
 		/// Establish the number of bins
 		int histSize = 256;
-
+		int histBinSizes[] = {histSize, histSize, histSize};
 		/// Set the ranges ( for B,G,R) )
 		float range[] = { 0, 256 } ;
-		const float* histRange = { range };
-
-		bool uniform = true; bool accumulate = false;
-
-		Mat b_hist, g_hist, r_hist;
+		const float* ranges[] = {range,range,range};
+		bool uniform = true; 
+		bool accumulate = false;
+		int channels[] = {0, 1, 2};
 
 		/// Compute the histograms:
 		if(useMask){///Use mask
-			calcHist( &bgr_planes[0], 1, 0, mask, b_hist, 1, &histSize, &histRange, uniform, accumulate );
-			calcHist( &bgr_planes[1], 1, 0, mask, g_hist, 1, &histSize, &histRange, uniform, accumulate );
-			calcHist( &bgr_planes[2], 1, 0, mask, r_hist, 1, &histSize, &histRange, uniform, accumulate );
-			hist.clear();
-			hist.push_back(r_hist);
-			hist.push_back(g_hist);
-			hist.push_back(b_hist);
+			calcHist( &image, 1, channels, mask, // do not use mask
+				hist, 2, histBinSizes, ranges,
+			    uniform, // the histogram is uniform
+			    accumulate);
 		}
 		else{///Don't use mask
-			calcHist( &bgr_planes[0], 1, 0, Mat(), b_hist, 1, &histSize, &histRange, uniform, accumulate );
-			calcHist( &bgr_planes[1], 1, 0, Mat(), g_hist, 1, &histSize, &histRange, uniform, accumulate );
-			calcHist( &bgr_planes[2], 1, 0, Mat(), r_hist, 1, &histSize, &histRange, uniform, accumulate );
-			hist.clear();
-			hist.push_back(r_hist);
-			hist.push_back(g_hist);
-			hist.push_back(b_hist);
+			calcHist( &image, 1, channels, Mat(), // do not use mask
+			    hist, 2, histBinSizes, ranges,
+			    uniform, // the histogram is uniform
+			    accumulate);
 		}
 	}
 	else if(colorSystem.compare("HSV")==0){
 		Mat hsv;
-		cvtColor(image, hsv, CV_BGR2HSV);
 
 		// Quantize the hue to 30 levels
 		// and the saturation to 32 levels
@@ -112,7 +125,7 @@ int prisImage::histogram(const string colorSystem, bool useMask){
 		// we compute the histogram from the 0-th and 1-st channels
 		int channels[] = {0, 1};
 		if(useMask){
-			calcHist( &hsv, 1, channels, Mat(), // do not use mask
+			calcHist( &hsv, 1, channels, mask, // do not use mask
 				     hist, 2, histSize, ranges,
 				     true, // the histogram is uniform
 				     false );
@@ -156,8 +169,11 @@ Mat prisImage::contoursToMask(vector<Point> contour, int type = CV_8UC1){
  	return  mask; 
 }
 
-vector<Mat> prisImage::getHist(){
+Mat prisImage::getHist(){
 	return hist;
+}
+blopList::blopList(){
+
 }
 /*
 	Constructor of the blopList
@@ -179,19 +195,25 @@ int blopList::getClosestCentroid(int blopIndex){
 		result: index of the current minimum distance centroid
 	*/
 	double minValue, tempMin;
-	int result;
+	int result=0;
 	///Initialize with the max double value
 	minValue = numeric_limits<double>::max();
 	///Iterates over all the centroids
 	for(int i=0;i<k;++i){
 		///Calculate distance
 		tempMin = list[blopIndex].distance(centroids[i]);
+		//cout<<tempMin<<endl; 
 		if(tempMin < minValue){/// Update if smaller
 			result = i;
 			minValue = tempMin;
 		}
 	}
+			
 	return result;
+}
+int blopList::calculateDimension(){
+	this->dimensions=list.size();
+	return 0;
 }
 /*
 	This function calculate the new value for the centroids
@@ -207,13 +229,17 @@ int blopList::getNewCentroids(){
   ///Initialize each centroid with zeros.
   for(int i=0; i < k; ++i){
   	centroids.push_back(blop(Mat::zeros(firstBlopHisto.size(),firstBlopHisto.type()),&bhattacharyyaDistance));
+
   }
-  ///Add each correspondant blop to the centroid
+
+///Add each correspondant blop to the centroid
   for (int i = 0 ; i < (signed int) list.size(); ++i){
   	position = closestCentroidIndex[i];
   	totalBlops[position]+=1;
- 	centroids[position].addBlops(list[i].getHisto());
+ 	centroids[position].addBlops(list[i].getHisto());///Addblops  is equivalente to centroids[position]=centroids[position]+list[i].getHisto
   }
+
+  //cout << "Matrix = "<< endl << " "  << (centroids[1].getHisto()) << endl << endl;
   ///Divide by N
   for(int i=0; i< k; ++i){
   	scale= 1/totalBlops[k];
@@ -230,17 +256,18 @@ int blopList::getNewCentroids(){
 */
 int blopList::kmeans(TERMINATION_T condition, double limitCondition){
 	this->randomInitializeCentroids();
-	if(limitCondition == NUM_ITERATIONS){
+	if(condition == NUM_ITERATIONS){
 		double numIterations = 0;
 		while(numIterations < limitCondition){
+			cout<<numIterations<<endl;
 			for (int i=0 ; i < (signed int) list.size(); ++i){
-				closestCentroidIndex[i] = getClosestCentroid(i);
+  				closestCentroidIndex[i] = getClosestCentroid(i);
 			}
 			getNewCentroids();
 			++numIterations;
 		}
 	}
-	else if(limitCondition == DISTANCE){
+	else if(condition == DISTANCE){
 		double tempDistance = numeric_limits<int>::max(); 
 		while(tempDistance > limitCondition){
 			cout<<"Not yet implemented: Correction is needed :D"<<endl;
@@ -295,7 +322,12 @@ int blopList::setK(int newK){
 	return 0;
 }
 
-XMLVideo::XMLVideo(string xmlFilename){
+int blopList::reserve(){
+	closestCentroidIndex.reserve(list.size());
+	return 0;
+}
+
+XMLVideo::XMLVideo(const char *xmlFilename){
 	file<> xmlFile(xmlFilename);
 	xml_document<> doc;
 	doc.parse<0>(xmlFile.data());	
@@ -307,9 +339,9 @@ XMLVideo::XMLVideo(string xmlFilename){
 	xml_node<> *widthNode = pNode->first_node("width");
 	xml_node<> *heightNode = pNode->first_node("height");
 	xml_node<> *lengthNode = pNode->first_node("length");
-	this->imageWidth = atoi((widthNode->value()).c_str());
-	this->imageHeight = atoi((heightNode->value()).c_str());
-	this->imageLength = atoi((lengthNode->value()).c_str());
+	this->imageWidth = atoi((widthNode->value()));
+	this->imageHeight = atoi((heightNode->value()));
+	this->imageLength = atoi((lengthNode->value()));
 	///Root children layers
 	xml_node<> *pLayers=pRoot->first_node("layers");///First children of video;	
 	///Iterate over layers childresns
@@ -318,9 +350,8 @@ XMLVideo::XMLVideo(string xmlFilename){
 		///Inside this node we only need to use the first_node, there is no multiple siblings, we can check the values of depth, name, description, url, color_green,color_red, color_blue
 		xml_node<> *numberNode = layer_node->first_node("number");
 		xml_node<> *nameNode = layer_node->first_node("name");
-		std::string strValue = numberNode->value();
-		int numberValue = atoi(strValue.c_str());
-		std::string name = numberNode->value();
+		int numberValue = atoi(numberNode->value());
+		std::string name = nameNode->value();
 		layersNames[numberValue] = name;
 				
 	}
@@ -332,32 +363,67 @@ XMLVideo::XMLVideo(string xmlFilename){
 		vector<Point> tempPoints;
 		xml_node<> *pointsNode = mask_node->first_node("polygon");
 		string maskPoints = pointsNode->first_attribute("points")->value();
-		xml_node<> *layerNode = mask_node->first_attribute("layer");
-		int layerNumber = ((layerNode->value()).c_str());
+		//xml_node<> *layerNode = mask_node->first_node("layer");
+		//int layerNumber = atoi((layerNode->value()));
+		xml_node<> *frameNode = mask_node->first_node("frame");
+		int frameNumber = atoi((frameNode->value()));
 		std::istringstream ss(maskPoints);
 		std::string token;
 		std::string token2;
 		while(std::getline(ss, token, ' ')) {///Each pair is separated by a whitespace
     		Point temp;
     		int counter = 0;
-    		while(std::getline(token,token2, ',')){
-    			if(counter = 0)
+			std::istringstream ss2(token);
+    		while(std::getline(ss2,token2, ',')){
+    			if(counter == 0){
     				temp.x=atoi(token2.c_str());
-    			else
+    			}
+    			else if(counter == 1){
     				temp.y=atoi(token2.c_str());
+    			}
     			++counter;
     		}
     		counter = 0;
     		tempPoints.push_back(temp);
 		}
-		contours.insert(std::pair<int,vector<Point> >(layerNumber,tempPoints));
+		contours.insert(std::pair<int,vector<Point> >(frameNumber,tempPoints));
+		/*****
+		TO DO
+			FALTA ALMACENAR LA RELACION ENTRE LOS PUNTOS Y SU LAYER CORRESPONDIENTE PARA HACER LA VALIDACION
+		****/
 	}
-	blops()
 }
 int XMLVideo::kmeans(int k,TERMINATION_T condition ,double limitCondition){
+	blops.setK(k);
+	blops.reserve();
+	blops.kmeans(condition,limitCondition);
 	return 0;
 }
 
 blopList XMLVideo::getBlopList(){
 	return blops;	
+}
+
+int XMLVideo::loadVideo(string filename){
+	video.loadVideo(filename);
+	int frameCounter = 0;
+	std::multimap<int,vector<Point> >::iterator it,itlow,itup;
+	while(video.extractNextImage()==0){
+		itlow = contours.lower_bound (frameCounter);  // itlow points to b
+  		itup = contours.upper_bound (frameCounter);   // itup points to e (not d)
+		// print range [itlow,itup):
+  		for (it=itlow; it!=itup; ++it){
+  			video.contoursToMask((*it).second);///Calculate new mask
+  			video.histogram("RGB",true);///Using RGB and masks
+  			blop temp(video.getHist(),&bhattacharyyaDistance);
+  			blops.addBlop(temp);
+    	}
+		++frameCounter;
+	}
+	blops.calculateDimension();
+	return 0;
+}
+
+vector<blop> XMLVideo::getCentroids(){
+	return blops.getCentroids();
 }
